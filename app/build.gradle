@@ -115,9 +115,6 @@ dependencies {
 
     implementation project(":player")
     implementation project(":quickjs")
-    pythonImplementation project(":pyramid")
-    python32Implementation project(":pyramid")
-    python64Implementation project(":pyramid")
 
 
     implementation 'com.lzy.net:okgo:3.0.4'
