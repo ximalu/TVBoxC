@@ -201,12 +201,12 @@ public class ApiConfig {
                 }
                 reader.close();
                 String json = sb.toString();
-                apiUrl = "embedded://tvboxmuti";
-                if (switchApiCollectionIfNeeded(apiUrl, json)) {
+                String embeddedUrl = "embedded://tvboxmuti";
+                if (switchApiCollectionIfNeeded(embeddedUrl, json)) {
                     loadConfig(false, callback, activity);
                     return;
                 }
-                parseJson(apiUrl, json);
+                parseJson(embeddedUrl, json);
                 callback.success();
                 return;
             } catch (Throwable th) {
