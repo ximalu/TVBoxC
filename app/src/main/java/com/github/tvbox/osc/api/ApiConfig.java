@@ -189,9 +189,29 @@ public class ApiConfig {
     public void loadConfig(boolean useCache, LoadConfigCallback callback, Activity activity) {
         String apiUrl = Hawk.get(HawkConfig.API_URL, "");
         if (apiUrl.isEmpty()) {
-            apiUrl = "https://gh-proxy.com/https://raw.githubusercontent.com/noimank/tvbox/master/tvboxmuti.json";
-            Hawk.put(HawkConfig.API_URL, apiUrl);
-            Hawk.put(HawkConfig.API_HISTORY, new ArrayList<String>() {{ add(apiUrl); }});
+            // First run: load embedded multi-source JSON from APK resources
+            try {
+                InputStream is = activity.getResources().openRawResource(R.raw.tvboxmuti);
+                BufferedReader reader = new BufferedReader(new InputStreamReader(is, "UTF-8"));
+                StringBuilder sb = new StringBuilder();
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    sb.append(line).append("\n");
+                }
+                reader.close();
+                String json = sb.toString();
+                apiUrl = "embedded://tvboxmuti";
+                if (switchApiCollectionIfNeeded(apiUrl, json)) {
+                    loadConfig(false, callback, activity);
+                    return;
+                }
+                parseJson(apiUrl, json);
+                callback.success();
+                return;
+            } catch (Throwable th) {
+                th.printStackTrace();
+                // Fallback to network fetch
+            }
         }
         File cache = new File(App.getInstance().getFilesDir().getAbsolutePath() + "/" + MD5.encode(apiUrl));
         if (useCache && cache.exists()) {

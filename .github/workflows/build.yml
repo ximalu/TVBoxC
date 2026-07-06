@@ -47,21 +47,17 @@ jobs:
       - name: Build with Gradle
         run: |
           chmod +x gradlew
-          ./gradlew assemblerelease --build-cache --parallel --daemon --warning-mode all
+          ./gradlew assembleJava64Release --build-cache --parallel --daemon --warning-mode all
 
       - name: Prepare APK
         run: |
           mkdir -p apk/
-          for file in $(find app/build/outputs/apk -name "*release*.apk"); do
-            base=$(basename "$file")
-            new_base="TVBox_${base}"
-            cp "$file" "apk/$new_base"
-          done
+          cp app/build/outputs/apk/java64/release/TVBoxC_release.apk apk/
 
       - name: Upload APK as Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: TVBoxOS-APK
+          name: TVBoxC-APK
           path: apk/*.apk
 
       - name: Create Release
@@ -71,7 +67,9 @@ jobs:
           tag_name: ${{ env.tag }}
           name: Build ${{ env.tag }}
           body: |
-            自动构建 ${{ env.tag }}
-            默认源: Noimank 多仓
+            电视仓 自动构建 ${{ env.tag }}
+            - 默认源: 饭太硬推荐
+            - 内置多仓（14个源，开箱即用）
+            - arm64-v8a only
           files: apk/*.apk
           generate_release_notes: false
