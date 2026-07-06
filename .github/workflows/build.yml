@@ -1,0 +1,77 @@
+name: Build APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set version tag
+        run: |
+          echo "tag=$(git log --date=format:'%Y%m%d-%H%M' --pretty=format:%cd -1)" >> $GITHUB_ENV
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.8'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Configure SDK & signing
+        run: |
+          echo "sdk.dir=$ANDROID_HOME" > local.properties
+          # Accept Android licenses
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses > /dev/null 2>&1 || true
+          # Ensure build-tools 30.0.3 is available
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "build-tools;30.0.3" "platforms;android-33" > /dev/null 2>&1 || true
+          # Setup signing
+          cp -f .github/workflows/TVBoxOSC.jks app/TVBoxOSC.jks
+          echo "RELEASE_STORE_FILE=./TVBoxOSC.jks" >> gradle.properties
+          echo "RELEASE_KEY_ALIAS=TVBoxOSC" >> gradle.properties
+          echo "RELEASE_STORE_PASSWORD=TVBoxOSC" >> gradle.properties
+          echo "RELEASE_KEY_PASSWORD=TVBoxOSC" >> gradle.properties
+
+      - name: Build with Gradle
+        run: |
+          chmod +x gradlew
+          ./gradlew assemblerelease --build-cache --parallel --daemon --warning-mode all
+
+      - name: Prepare APK
+        run: |
+          mkdir -p apk/
+          for file in $(find app/build/outputs/apk -name "*release*.apk"); do
+            base=$(basename "$file")
+            new_base="TVBox_${base}"
+            cp "$file" "apk/$new_base"
+          done
+
+      - name: Upload APK as Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: TVBoxOS-APK
+          path: apk/*.apk
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        if: github.ref == 'refs/heads/main'
+        with:
+          tag_name: ${{ env.tag }}
+          name: Build ${{ env.tag }}
+          body: |
+            自动构建 ${{ env.tag }}
+            默认源: Noimank 多仓
+          files: apk/*.apk
+          generate_release_notes: false
